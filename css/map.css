@@ -1,0 +1,26 @@
+html, body {
+  background: #E6FAFF;
+  height: 100%;
+}
+#google-map-view {
+  height: 60%;
+}
+#station-controller {
+  background: #A3A3C2;
+}
+.table {
+  background: #FFF;
+}
+.markers, .markers svg {
+  position: absolute;
+}
+.markers svg {
+  width: 60px;
+  height: 20px;
+  padding-right: 100px;
+  font: 10px sans-serif;
+}
+.markers circle {
+  stroke: black;
+  stroke-width: 1.5px;
+}
