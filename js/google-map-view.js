@@ -1,7 +1,6 @@
 /*************************************************
     Attributes:
  *************************************************/
-
 GoogleMapView.prototype.center;
 GoogleMapView.prototype.markerData;
 GoogleMapView.prototype.map;
@@ -10,7 +9,6 @@ GoogleMapView.prototype.overlay;
 /*************************************************
     Constructors:
  *************************************************/
-
 function GoogleMapView(center) {
     if (center == null) {
         center = {
@@ -35,6 +33,14 @@ function GoogleMapView(center) {
 /*************************************************
     Methods:
  *************************************************/
+GoogleMapView.prototype.createMap = function() {
+    var map = new google.maps.Map(d3.select("#google-map-view").node(), {
+        zoom: 18,
+        center: new google.maps.LatLng(this.center.pos[0], this.center.pos[1]),
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+    return map;
+};
 
 GoogleMapView.prototype.getMarkerData = function() {
     return this.markerData;
@@ -45,20 +51,10 @@ GoogleMapView.prototype.addMarkers = function(key, markers) {
     this.overlay.draw();
 }
 
-
 GoogleMapView.prototype.removeMarkers = function(key) {
     this.markerData.remove(key);
     this.overlay.draw();
 }
-
-GoogleMapView.prototype.createMap = function() {
-    var map = new google.maps.Map(d3.select("#google-map-view").node(), {
-        zoom: 18,
-        center: new google.maps.LatLng(this.center.pos[0], this.center.pos[1]),
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-    });
-    return map;
-};
 
 GoogleMapView.prototype.createOverlay = function(map) {
     var overlay = new google.maps.OverlayView();
@@ -76,12 +72,13 @@ GoogleMapView.prototype.createOverlay = function(map) {
                 data = data.concat(v);
             });
             var marker = layer.selectAll("svg")
-                .data(data)
-                .each(transform)
+                .data(data);
+            marker.exit().remove();
+            var newMarker = marker.each(transform)
                 .enter().append("svg:svg")
                 .each(transform)
                 .attr("class", "marker");
-            marker.append("svg:circle").attr({
+            newMarker.append("svg:circle").attr({
                 r: 4.5,
                 cx: padding,
                 cy: padding,
