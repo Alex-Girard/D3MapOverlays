@@ -47,6 +47,10 @@ StationController.prototype.initStationSelector = function() {
         "command=routeList&a=sf-muni",
         "application/xml",
         function(error, data) {
+            if (error != null) {
+                console.log(error);
+            }
+
             var lineSelector = d3.select("#muni-line-selector");
             var lineOption = lineSelector.selectAll("option")
                 .data(data.documentElement.getElementsByTagName("route"))
@@ -121,6 +125,9 @@ StationController.prototype.retrieveStationPoints = function(map, tr, newLine) {
     d3.xml("http://webservices.nextbus.com/service/publicXMLFeed?" +
         "command=routeConfig&a=sf-muni&r=" + newLine.tag, "application/xml",
         function(error, data) {
+            if (error != null) {
+                console.log(error);
+            }
             var stops = data.documentElement.getElementsByTagName("stop");
             var stations = [];
             for (i = 0; i < stops.length; ++i) {
