@@ -1,10 +1,12 @@
 /*************************************************
     Attributes:
  *************************************************/
-GoogleMapView.prototype.center;
-GoogleMapView.prototype.markerData;
+GoogleMapView.prototype.googleOpt;
 GoogleMapView.prototype.map;
 GoogleMapView.prototype.overlay;
+GoogleMapView.prototype.svg;
+GoogleMapView.prototype.contourData;
+GoogleMapView.prototype.markerData;
 
 /*************************************************
     Constructors:
@@ -18,12 +20,14 @@ function GoogleMapView(center) {
             'color': "red"
         };
     }
-    this.center = center;
+    this.googleOpt = {
+        zoom: 18,
+        center: new google.maps.LatLng(center.pos[0], center.pos[1]),
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
     this.markerData = d3.map()
     this.markerData.set("POI", [center]);
-
-    this.map = this.createMap();
-    this.overlay = this.createOverlay();
+    this.init();
 }
 
 /*************************************************
@@ -33,14 +37,6 @@ function GoogleMapView(center) {
 /*************************************************
     Methods:
  *************************************************/
-GoogleMapView.prototype.createMap = function() {
-    var map = new google.maps.Map(d3.select("#google-map-view").node(), {
-        zoom: 18,
-        center: new google.maps.LatLng(this.center.pos[0], this.center.pos[1]),
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-    });
-    return map;
-};
 
 GoogleMapView.prototype.getMarkerData = function() {
     return this.markerData;
@@ -56,46 +52,110 @@ GoogleMapView.prototype.removeMarkers = function(key) {
     this.overlay.draw();
 }
 
-GoogleMapView.prototype.createOverlay = function(map) {
-    var overlay = new google.maps.OverlayView();
-    var markerData = this.getMarkerData();
-    overlay.onAdd = function() {
-        var layer = d3.select(this.getPanes().overlayLayer).append("div")
-            .attr("class", "markers");
+GoogleMapView.prototype.googleProjection = function(prj) {
+    return function(latlng) {
+        ret = toPixel(latlng);
+        return [ret.x + 10000, ret.y + 10000];
+    };
+}
 
-        // Draw each marker as a separate SVG element.
-        overlay.draw = function() {
-            var projection = this.getProjection(),
-                padding = 10;
-            var data = [];
-            markerData.forEach(function(k, v) {
-                data = data.concat(v);
-            });
-            var marker = layer.selectAll("svg")
-                .data(data);
-            marker.exit().remove();
-            var newMarker = marker.each(transform)
-                .enter().append("svg:svg")
-                .each(transform)
-                .attr("class", "marker");
-            newMarker.append("svg:circle").attr({
-                r: 4.5,
-                cx: padding,
-                cy: padding,
-                fill: function(d) {
-                    return d.color;
-                }
-            });
+GoogleMapView.prototype.toPixel = function(prj, latlng) {
+    ret = prj.fromLatLngToDivPixel(new google.maps.LatLng(latlng[0], latlng[1]))
+    return [ret.x, ret.y];
+}
 
-            function transform(d) {
-                d = new google.maps.LatLng(d.pos[0], d.pos[1]);
-                d = projection.fromLatLngToDivPixel(d);
-                return d3.select(this)
-                    .style("left", (d.x - padding) + "px")
-                    .style("top", (d.y - padding) + "px");
-            }
+GoogleMapView.prototype.init = function(googleOpt) {
+    var self = this;
+    var top = -10000;
+    var left = -10000;
+    var width = 20000;
+    var height = 20000;
+    self.map = new google.maps.Map(d3.select("#google-map-view").node(),
+        self.googleOpt);
+    self.overlay = new google.maps.OverlayView();
+
+    self.overlay.onAdd = function() {
+        self.svg = d3.select(this.getPanes().overlayLayer)
+            .append("svg")
+            .attr({
+                id: "svgRoot",
+            });
+        self.overlay.draw = function() {
+            self.svg.style({
+                position: "absolute",
+                top: top + "px",
+                left: left + "px",
+                width: width + "px",
+                height: height + "px",
+            });
+            self.drawContours(left, top);
+            self.drawMarkers(left, top);
         };
     };
-    overlay.setMap(this.map);
-    return overlay;
+    self.overlay.setMap(self.map);
+}
+
+GoogleMapView.prototype.drawContours = function(left, top) {
+    var self = this;
+    if (self.contourData != null && self.contourData.size() > 0) {
+        var projection = self.overlay.getProjection()
+        var data = [];
+        self.contourData.forEach(function(k, v) {
+            data = data.concat(v);
+        });
+        var path = d3.geo.path().projection(self.googleProjection(projection));
+        var contours = self.svg.selectAll("path")
+            .data(data);
+        contours.attr({
+            d: path,
+        });
+        contours.enter().append("path").attr({
+            d: path,
+        });
+    }
+}
+
+
+GoogleMapView.prototype.drawMarkers = function(left, top) {
+    var self = this;
+    if (self.markerData != null && self.markerData.size() > 0) {
+        var data = [];
+        self.markerData.forEach(function(k, v) {
+            data = data.concat(v);
+        });
+        var markers = self.svg.selectAll("circle")
+            .data(data);
+        markers.exit().remove();
+        self.updateSelectedMarker(left, top, markers);
+        self.updateSelectedMarker(left, top, markers.enter().append("circle"));
+    }
+}
+
+GoogleMapView.prototype.updateSelectedMarker = function(left, top, markers) {
+    var self = this;
+    var projection = self.overlay.getProjection()
+    markers.attr({
+        r: function(d) {
+            var zoomRatio = self.map.getZoom() / self.googleOpt.zoom;
+            if (d.hasOwnProperty('radius')) {
+                return d.radius * zoomRatio;
+            } else {
+                return 4.5 * zoomRatio;
+            }
+        },
+        cx: function(d) {
+            return self.toPixel(projection, d.pos)[0];
+        },
+        cy: function(d) {
+            return self.toPixel(projection, d.pos)[1];
+        },
+        fill: function(d) {
+            if (d.hasOwnProperty('color')) {
+                return d.color;
+            } else {
+                return "black";
+            }
+        },
+        transform: "translate(" + [-left, -top] + ")",
+    });
 }
