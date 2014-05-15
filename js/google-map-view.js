@@ -11,7 +11,7 @@ GoogleMapView.prototype.markerData;
 /*************************************************
     Constructors:
  *************************************************/
-function GoogleMapView(center) {
+function GoogleMapView(rootNode, center) {
     if (center == null) {
         center = {
             'name': 'center',
@@ -25,9 +25,10 @@ function GoogleMapView(center) {
         center: new google.maps.LatLng(center.pos[0], center.pos[1]),
         mapTypeId: google.maps.MapTypeId.ROADMAP
     };
-    this.markerData = d3.map()
+    this.resetMarkerData();
+    this.resetContourData();
     this.markerData.set("POI", [center]);
-    this.init();
+    this.init(this.googleOpt, rootNode);
 }
 
 /*************************************************
@@ -38,18 +39,36 @@ function GoogleMapView(center) {
     Methods:
  *************************************************/
 
+GoogleMapView.prototype.resetMarkerData = function() {
+    this.markerData = d3.map();
+    if (this.overlay != null) {
+        this.overlay.draw();
+    }
+}
+
+GoogleMapView.prototype.resetContourData = function() {
+    this.contourData = d3.map();
+    if (this.overlay != null) {
+        this.overlay.draw();
+    }
+}
+
 GoogleMapView.prototype.getMarkerData = function() {
     return this.markerData;
 }
 
 GoogleMapView.prototype.addMarkers = function(key, markers) {
     this.markerData.set(key, markers);
-    this.overlay.draw();
+    if (this.overlay != null) {
+        this.overlay.draw();
+    }
 }
 
 GoogleMapView.prototype.removeMarkers = function(key) {
     this.markerData.remove(key);
-    this.overlay.draw();
+    if (this.overlay != null) {
+        this.overlay.draw();
+    }
 }
 
 GoogleMapView.prototype.googleProjection = function(prj) {
@@ -64,13 +83,13 @@ GoogleMapView.prototype.toPixel = function(prj, latlng) {
     return [ret.x, ret.y];
 }
 
-GoogleMapView.prototype.init = function(googleOpt) {
+GoogleMapView.prototype.init = function(googleOpt, rootNode) {
     var self = this;
     var top = -10000;
     var left = -10000;
     var width = 20000;
     var height = 20000;
-    self.map = new google.maps.Map(d3.select("#google-map-view").node(),
+    self.map = new google.maps.Map(d3.select(rootNode).node(),
         self.googleOpt);
     self.overlay = new google.maps.OverlayView();
 
@@ -135,6 +154,7 @@ GoogleMapView.prototype.updateSelectedMarker = function(left, top, markers) {
     var self = this;
     var projection = self.overlay.getProjection()
     markers.attr({
+        class: "circleMarker marker",
         r: function(d) {
             var zoomRatio = self.map.getZoom() / self.googleOpt.zoom;
             if (d.hasOwnProperty('radius')) {

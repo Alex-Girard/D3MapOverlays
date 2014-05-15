@@ -5,22 +5,19 @@ html, body {
 #google-map-view {
   height: 60%;
 }
-#station-controller {
+
+#top-page {
+  background: #A3A3C2;
+}
+
+#bottom-page {
   background: #A3A3C2;
 }
 .table {
   background: #FFF;
 }
-.markers, .markers svg {
-  position: absolute;
-}
-.markers svg {
-  width: 60px;
-  height: 20px;
-  padding-right: 100px;
-  font: 10px sans-serif;
-}
-.markers circle {
+
+.circleMarker {
   stroke: black;
   stroke-width: 1.5px;
 }
