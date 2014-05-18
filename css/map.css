@@ -1,20 +1,8 @@
 html, body {
-  background: #E6FAFF;
   height: 100%;
 }
 #google-map-view {
-  height: 60%;
-}
-
-#top-page {
-  background: #A3A3C2;
-}
-
-#bottom-page {
-  background: #A3A3C2;
-}
-.table {
-  background: #FFF;
+  height: 50%;
 }
 
 .circleMarker {
