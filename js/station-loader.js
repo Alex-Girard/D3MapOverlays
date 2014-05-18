@@ -15,11 +15,12 @@ function StationLoader(rootNode, map) {
         "application/xml",
         function(error, data) {
             if (error != null) {
-                console.log(error);
+                console.warn(error);
             } else {
                 self.selectorData = data.documentElement.getElementsByTagName("route");
                 if (self.selectorData != null) {
-                    controller = new MapController(rootNode, "stations", self);
+                    controller = new MapController("Bus Stations", self);
+                    controller.init(rootNode);
                 }
             }
         });
@@ -38,7 +39,7 @@ StationLoader.prototype.addDataToMap = function(self, elt) {
         "command=routeConfig&a=sf-muni&r=" + elt.tag, "application/xml",
         function(error, data) {
             if (error != null) {
-                console.log(error);
+                console.warn(error);
             }
             var stops = data.documentElement.getElementsByTagName("stop");
             var stations = [];
@@ -49,15 +50,16 @@ StationLoader.prototype.addDataToMap = function(self, elt) {
                         group: elt.tag,
                         name: stop.getAttribute("title"),
                         pos: [stop.getAttribute("lat"), stop.getAttribute("lon")],
-                        color: elt.color
+                        color: elt.color,
+                        opacity: 1,
                     });
                 }
             }
-            self.map.addMarkers(elt.tag, stations);
+            self.map.addMarkerData(elt.tag, stations);
         });
 }
 
 
 StationLoader.prototype.removeDataFromMap = function(elt) {
-    this.map.removeMarkers(elt.tag);
+    this.map.removeMarkerData(elt.tag);
 }

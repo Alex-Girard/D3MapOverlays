@@ -1,0 +1,96 @@
+<html>
+<head>
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+
+    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/d3/2.10.0/d3.v2.min.js"></script>
+
+    <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+
+    <style>
+        
+        #map {
+            width: 500px;
+            height: 500px;
+        }
+        
+        .SvgOverlay {
+            position: relative;
+            width: 500px;
+            height: 500px;           
+        }
+        
+        .SvgOverlay svg {
+            position: absolute;
+            top: -4000px;
+            left: -4000px;
+            width: 8000px;
+            height: 8000px;        
+        }
+        
+        .SvgOverlay path {
+            stroke: Orange;
+            stroke-width: 2px;
+            fill: Orange;
+            fill-opacity: .3;
+        }
+        
+    </style>
+</head>
+<body>
+    
+    <div id="map-wrap">
+        <div id="map">
+        </div>
+    </div>
+
+    <script>
+       d3.json("../data/districts-sf.json", function(data) {
+          
+            var geoJson = topojson.feature(data,
+                data.objects.neighborhood);
+            var $map = $("#map");
+            var map = new google.maps.Map($map[0], {
+                    zoom: 12,
+                    mapTypeId: google.maps.MapTypeId.ROADMAP,
+                    center: new google.maps.LatLng(37.8009, -122.43666),
+                    //styles:[{"stylers": [{"saturation": -75},{"lightness": 75}]}]           
+                });
+        
+            var overlay = new google.maps.OverlayView();
+            overlay.onAdd = function () {
+
+                var layer = d3.select(this.getPanes().overlayLayer).append("div").attr("class", "SvgOverlay");
+                var svg = layer.append("svg");
+                var adminDivisions = svg.append("g").attr("class", "AdminDivisions");
+
+                overlay.draw = function () {
+                    var markerOverlay = this;
+                    var overlayProjection = markerOverlay.getProjection();
+
+                    // Turn the overlay projection into a d3 projection
+                    var googleMapProjection = function (coordinates) {
+                        var googleCoordinates = new google.maps.LatLng(coordinates[1], coordinates[0]);
+                        var pixelCoordinates = overlayProjection.fromLatLngToDivPixel(googleCoordinates);
+                        return [pixelCoordinates.x + 4000, pixelCoordinates.y + 4000];
+                    }
+
+                    path = d3.geo.path().projection(googleMapProjection);
+                    adminDivisions.selectAll("path")
+                        .data(geoJson.features)
+                        .attr("d", path) // update existing paths
+                    .enter().append("svg:path")
+                        .attr("d", path);
+                };
+
+            };
+
+            overlay.setMap(map); 
+        
+    });
+    </script>
+
+</body>
+</html>

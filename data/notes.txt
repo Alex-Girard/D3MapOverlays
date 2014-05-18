@@ -1,0 +1,10 @@
+The original data of neighborhood was found on:
+https://data.sfgov.org/Geography/Neighborhoods/ejmn-jyk6?
+
+Because the projection used by https://data.sfgov.org was not using long/lat coordinates, I had to re project them to get values that D3 could understand:
+
+ogr2ogr -f GeoJSON data/neighborhood.json data/planning_neighborhoods.shp  -t_srs "+proj=longlat +ellps=WGS84 +no_defs +towgs84=0,0,0"
+
+Then:
+
+topojson -p -o data/neighborhood-topo.json data/neighborhood.json

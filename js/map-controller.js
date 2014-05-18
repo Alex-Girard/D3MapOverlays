@@ -3,20 +3,27 @@
  *************************************************/
 MapController.prototype.selectedItems;
 MapController.prototype.name;
+MapController.prototype.displayName;
 MapController.prototype.colorScale;
 MapController.prototype.dataLoader;
 
 /*************************************************
     Constructors:
  *************************************************/
-function MapController(rootNode, name, dataLoader) {
-    this.selectedItems = [];
-    this.name = name;
+function MapController(name, dataLoader) {
+    MapController(name, dataLoader, null);
+}
+
+function MapController(name, dataLoader, scale) {
+    this.selectedItems = d3.map();
+    this.displayName = name;
+    this.name = this.formatName(name);
     this.dataLoader = dataLoader;
-    this.colorScale = d3.scale.category20();
-    this.initPage(rootNode);
-    this.initSelector(dataLoader.getSelectorData());
-    $("#" + name + "-selector").bind('change', this, onSelection);
+    if (scale == null) {
+        this.colorScale = d3.scale.category20();
+    } else {
+        colorScale = scale;
+    }
 }
 
 /*************************************************
@@ -29,7 +36,7 @@ var onSelection = function(e) {
         var newItem = {
             tag: choice.attr('tag'),
             name: choice.attr('value'),
-            color: self.colorScale(self.selectedItems.length),
+            color: self.colorScale(self.selectedItems.size()),
             data: self,
         };
         self.onNewItem(newItem);
@@ -46,6 +53,15 @@ var onClickRemove = function(e) {
 /*************************************************
     Methods:
  *************************************************/
+MapController.prototype.formatName = function(name) {
+    return name.replace(/\s+/, '').toLowerCase();
+}
+
+MapController.prototype.init = function(rootNode) {
+    this.initPage(rootNode);
+    this.initSelector(this.dataLoader.getSelectorData());
+    $("#" + this.name + "-selector").bind('change', this, onSelection);
+}
 
 MapController.prototype.initPage = function(rootNode) {
     $(rootNode).append('<br>\
@@ -53,7 +69,7 @@ MapController.prototype.initPage = function(rootNode) {
           <div class="form-group">\
             <select id="' + this.name + '-selector" class="form-control selectpicker"\
                 data-live-search="true">\
-              <option>Select ' + this.name + ' to display </option>\
+              <option>Select ' + this.displayName + ' to display </option>\
             </select>\
           </div>\
           <div>\
@@ -66,39 +82,51 @@ MapController.prototype.initPage = function(rootNode) {
         </form>');
 }
 
+MapController.prototype.extractData = function(data) {
+    return data;
+}
+
+MapController.prototype.extractTitle = function(data) {
+    return data.getAttribute("title");
+}
+
+
+MapController.prototype.extractTag = function(data) {
+    return data.getAttribute("tag");
+}
+
 MapController.prototype.initSelector = function(data) {
     var self = this;
     var lineSelector = d3.select("#" + self.name + "-selector");
     var lineOption = lineSelector.selectAll("option")
-        .data(data)
+        .data(self.extractData(data))
         .enter().append("option");
     lineOption.attr({
         class: function(d) {
             return self.name + "-option";
         },
         value: function(d) {
-            return d.getAttribute("title");
+            return self.extractTitle(d);
         },
         tag: function(d) {
-            return d.getAttribute("tag");
+            return self.extractTag(d);
         }
     }).text(function(d) {
-        return d.getAttribute("title");
+        return self.extractTitle(d);
     });
     $('#' + self.name + '-selector').selectpicker();
 }
 
 MapController.prototype.onNewItem = function(elt) {
-    if (this.selectedItems.indexOf(elt) == -1) {
-        this.selectedItems.push(elt);
+    if (!this.selectedItems.has(elt.tag)) {
+        this.selectedItems.set(elt.tag, elt);
         this.updateItems();
     }
 }
 
 MapController.prototype.onRemoveItem = function(elt) {
-    var index = this.selectedItems.indexOf(elt);
-    if (index != -1) {
-        this.selectedItems.splice(index, 1);
+    if (this.selectedItems.has(elt.tag)) {
+        this.selectedItems.remove(elt.tag);
         this.dataLoader.removeDataFromMap(elt);
         this.updateItems();
     }
@@ -109,7 +137,7 @@ MapController.prototype.updateItems = function() {
     var selecteLineTable = d3.select("table#displayed-" + this.name)
         .select("tbody");
     var tr = selecteLineTable.selectAll("tr")
-        .data(this.selectedItems);
+        .data(this.selectedItems.values());
     tr.exit().remove();
     tr.select(".color-btn").style({
         background: function(d) {

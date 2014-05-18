@@ -5,7 +5,7 @@ GoogleMapView.prototype.googleOpt;
 GoogleMapView.prototype.map;
 GoogleMapView.prototype.overlay;
 GoogleMapView.prototype.svg;
-GoogleMapView.prototype.contourData;
+GoogleMapView.prototype.areaData;
 GoogleMapView.prototype.markerData;
 
 /*************************************************
@@ -16,17 +16,17 @@ function GoogleMapView(rootNode, center) {
         center = {
             'name': 'center',
             'group': 'POI',
-            'pos': [37.8009, -122.43666],
+            'pos': [37, -122],
             'color': "red"
         };
     }
     this.googleOpt = {
-        zoom: 18,
+        zoom: 13,
         center: new google.maps.LatLng(center.pos[0], center.pos[1]),
         mapTypeId: google.maps.MapTypeId.ROADMAP
     };
     this.resetMarkerData();
-    this.resetContourData();
+    this.resetAreaData();
     this.markerData.set("POI", [center]);
     this.init(this.googleOpt, rootNode);
 }
@@ -46,36 +46,39 @@ GoogleMapView.prototype.resetMarkerData = function() {
     }
 }
 
-GoogleMapView.prototype.resetContourData = function() {
-    this.contourData = d3.map();
+GoogleMapView.prototype.resetAreaData = function() {
+    this.areaData = d3.map();
     if (this.overlay != null) {
         this.overlay.draw();
     }
 }
 
-GoogleMapView.prototype.getMarkerData = function() {
-    return this.markerData;
-}
-
-GoogleMapView.prototype.addMarkers = function(key, markers) {
+GoogleMapView.prototype.addMarkerData = function(key, markers) {
     this.markerData.set(key, markers);
     if (this.overlay != null) {
         this.overlay.draw();
     }
 }
 
-GoogleMapView.prototype.removeMarkers = function(key) {
+GoogleMapView.prototype.removeMarkerData = function(key) {
     this.markerData.remove(key);
     if (this.overlay != null) {
         this.overlay.draw();
     }
 }
 
-GoogleMapView.prototype.googleProjection = function(prj) {
-    return function(latlng) {
-        ret = toPixel(latlng);
-        return [ret.x + 10000, ret.y + 10000];
-    };
+GoogleMapView.prototype.addAreaData = function(key, contours) {
+    this.areaData.set(key, contours);
+    if (this.overlay != null) {
+        this.overlay.draw();
+    }
+}
+
+GoogleMapView.prototype.removeAreaData = function(key) {
+    this.areaData.remove(key);
+    if (this.overlay != null) {
+        this.overlay.draw();
+    }
 }
 
 GoogleMapView.prototype.toPixel = function(prj, latlng) {
@@ -107,37 +110,56 @@ GoogleMapView.prototype.init = function(googleOpt, rootNode) {
                 width: width + "px",
                 height: height + "px",
             });
-            self.drawContours(left, top);
-            self.drawMarkers(left, top);
+            self.drawAreaData(left, top);
+            self.drawMarkerData(left, top);
         };
     };
     self.overlay.setMap(self.map);
 }
 
-GoogleMapView.prototype.drawContours = function(left, top) {
-    var self = this;
-    if (self.contourData != null && self.contourData.size() > 0) {
-        var projection = self.overlay.getProjection()
-        var data = [];
-        self.contourData.forEach(function(k, v) {
-            data = data.concat(v);
-        });
-        var path = d3.geo.path().projection(self.googleProjection(projection));
-        var contours = self.svg.selectAll("path")
-            .data(data);
-        contours.attr({
-            d: path,
-        });
-        contours.enter().append("path").attr({
-            d: path,
-        });
+GoogleMapView.prototype.googleMapProjection = function(prj) {
+    return function(coordinates) {
+        var googleCoordinates = new google.maps.LatLng(coordinates[1], coordinates[0]);
+        var pixelCoordinates = prj.fromLatLngToDivPixel(googleCoordinates);
+        return [pixelCoordinates.x + 10000, pixelCoordinates.y + 10000];
     }
 }
 
-
-GoogleMapView.prototype.drawMarkers = function(left, top) {
+GoogleMapView.prototype.drawAreaData = function(left, top) {
     var self = this;
-    if (self.markerData != null && self.markerData.size() > 0) {
+    if (self.areaData != null) {
+        var projection = self.overlay.getProjection()
+        var data = [];
+        self.areaData.forEach(function(k, v) {
+            data = data.concat(v);
+        });
+
+        var prj = self.googleMapProjection(projection);
+        var path = d3.geo.path().projection(prj);
+        var areas = self.svg.selectAll("path")
+            .data(data);
+        areas.exit().remove();
+        self.updateSelectedArea(left, top, areas, path);
+        self.updateSelectedArea(left, top, areas.enter().append("path"), path);
+    }
+}
+GoogleMapView.prototype.updateSelectedArea = function(left, top, areas, path) {
+    var self = this;
+    areas.attr({
+        d: path,
+        class: "areaMarker",
+        fill: function(d) {
+            return d.properties.color;
+        },
+        stroke: function(d) {
+            return d.properties.color;
+        },
+    });
+}
+
+GoogleMapView.prototype.drawMarkerData = function(left, top) {
+    var self = this;
+    if (self.markerData != null) {
         var data = [];
         self.markerData.forEach(function(k, v) {
             data = data.concat(v);
