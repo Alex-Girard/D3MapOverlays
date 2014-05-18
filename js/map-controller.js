@@ -22,32 +22,8 @@ function MapController(name, dataLoader, scale) {
     if (scale == null) {
         this.colorScale = d3.scale.category20();
     } else {
-        colorScale = scale;
+        this.colorScale = scale;
     }
-}
-
-/*************************************************
-    Static functions:
- *************************************************/
-var onSelection = function(e) {
-    var self = e.data;
-    var choice = $("option." + self.name + "-option[value='" + $(this).val() + "']");
-    if (choice.length > 0) {
-        var newItem = {
-            tag: choice.attr('tag'),
-            name: choice.attr('value'),
-            color: self.colorScale(self.selectedItems.size()),
-            data: self,
-        };
-        self.onNewItem(newItem);
-    }
-    // reset the list selector
-    $("#" + self.name + "-selector").selectpicker('deselectAll');
-}
-
-
-var onClickRemove = function(e) {
-    e.data.onRemoveItem(e);
 }
 
 /*************************************************
@@ -60,7 +36,7 @@ MapController.prototype.formatName = function(name) {
 MapController.prototype.init = function(rootNode) {
     this.initPage(rootNode);
     this.initSelector(this.dataLoader.getSelectorData());
-    $("#" + this.name + "-selector").bind('change', this, onSelection);
+    $("#" + this.name + "-selector").bind('change', this, this.onSelection);
 }
 
 MapController.prototype.initPage = function(rootNode) {
@@ -69,7 +45,7 @@ MapController.prototype.initPage = function(rootNode) {
           <div class="form-group">\
             <select id="' + this.name + '-selector" class="form-control selectpicker"\
                 data-live-search="true">\
-              <option>Select ' + this.displayName + ' to display </option>\
+              <option>Add ' + this.displayName + ' to display </option>\
             </select>\
           </div>\
           <div>\
@@ -117,6 +93,22 @@ MapController.prototype.initSelector = function(data) {
     $('#' + self.name + '-selector').selectpicker();
 }
 
+MapController.prototype.onSelection = function(e) {
+    var self = e.data;
+    var choice = $("option." + self.name + "-option[value='" + $(this).val() + "']");
+    if (choice.length > 0) {
+        var newItem = {
+            tag: choice.attr('tag'),
+            name: choice.attr('value'),
+            color: self.colorScale(self.selectedItems.size()),
+            data: self,
+        };
+        self.onNewItem(newItem);
+    }
+    // reset the list selector
+    $("#" + self.name + "-selector").selectpicker('deselectAll');
+}
+
 MapController.prototype.onNewItem = function(elt) {
     if (!this.selectedItems.has(elt.tag)) {
         this.selectedItems.set(elt.tag, elt);
@@ -125,10 +117,11 @@ MapController.prototype.onNewItem = function(elt) {
 }
 
 MapController.prototype.onRemoveItem = function(elt) {
-    if (this.selectedItems.has(elt.tag)) {
-        this.selectedItems.remove(elt.tag);
-        this.dataLoader.removeDataFromMap(elt);
-        this.updateItems();
+    var self = elt.data;
+    if (self.selectedItems.has(elt.tag)) {
+        self.selectedItems.remove(elt.tag);
+        self.dataLoader.removeDataFromMap(elt);
+        self.updateItems();
     }
 }
 
@@ -139,6 +132,42 @@ MapController.prototype.updateItems = function() {
     var tr = selecteLineTable.selectAll("tr")
         .data(this.selectedItems.values());
     tr.exit().remove();
+    self.updateAttributes(tr);
+    var newTr = self.createNewTr(tr);
+    self.updateAttributes(newTr);
+}
+
+MapController.prototype.createNewTr = function(tr) {
+    var newTr = tr.enter().append("tr");
+    var button;
+    // $("#color-btn-" + elt.tag).colorpicker({
+    //     color: elt.color
+    // });
+    button = newTr.append("td").append("button");
+    button.attr({
+        type: 'button',
+        class: "color-btn btn btn-default btn-lg pull-left",
+    });
+    var dataLoader = this.dataLoader;
+    newTr.append("td").attr({
+        class: function(d) {
+            dataLoader.addDataToMap(dataLoader, d);
+            return "option-label"
+        }
+    });
+
+    button = newTr.append("td").append("button")
+        .attr({
+            type: 'button',
+            class: "remove-btn btn btn-default btn-lg pull-right",
+        }).append("span").attr({
+            class: "glyphicon glyphicon-trash"
+        });
+    return newTr;
+}
+
+MapController.prototype.updateAttributes = function(tr) {
+    var self = this;
     tr.select(".color-btn").style({
         background: function(d) {
             return d.color;
@@ -147,35 +176,8 @@ MapController.prototype.updateItems = function() {
             return d.color;
         },
     });
-    tr.select(".remove-btn").on('click', onClickRemove);
-    var newTr = tr.enter().append("tr");
-    var button = newTr.append("td").append("button")
-        .attr({
-            type: 'button',
-            class: "color-btn btn btn-default btn-lg pull-left",
-        }).style({
-            background: function(d) {
-                return d.color;
-            },
-            foreground: function(d) {
-                return d.color;
-            },
-        });
-    // $("#color-btn-" + elt.tag).colorpicker({
-    //     color: elt.color
-    // });
-    var dataLoader = this.dataLoader;
-    newTr.append("td").text(function(d) {
-        dataLoader.addDataToMap(dataLoader, d);
+    tr.select(".option-label").text(function(d) {
         return d.name;
     });
-
-    button = newTr.append("td").append("button")
-        .on('click', onClickRemove)
-        .attr({
-            type: 'button',
-            class: "remove-btn btn btn-default btn-lg pull-right",
-        }).append("span").attr({
-            class: "glyphicon glyphicon-trash"
-        });
+    tr.select(".remove-btn").on('click', self.onRemoveItem);
 }

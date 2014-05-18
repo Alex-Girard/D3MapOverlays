@@ -5,12 +5,16 @@ html, body {
   height: 50%;
 }
 
+#container {
+  height: 50%;
+}
+
 .circleMarker {
   stroke: black;
   stroke-width: 1.5px;
 }
 
-.areaMarker {
+.pathMarker {
   stroke-width: 1.5px;
   fill-opacity: 0.2;
 }

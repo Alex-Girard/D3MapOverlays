@@ -5,7 +5,7 @@ GoogleMapView.prototype.googleOpt;
 GoogleMapView.prototype.map;
 GoogleMapView.prototype.overlay;
 GoogleMapView.prototype.svg;
-GoogleMapView.prototype.areaData;
+GoogleMapView.prototype.pathData;
 GoogleMapView.prototype.markerData;
 
 /*************************************************
@@ -21,19 +21,16 @@ function GoogleMapView(rootNode, center) {
         };
     }
     this.googleOpt = {
-        zoom: 13,
+        zoom: 12,
         center: new google.maps.LatLng(center.pos[0], center.pos[1]),
         mapTypeId: google.maps.MapTypeId.ROADMAP
     };
     this.resetMarkerData();
-    this.resetAreaData();
-    this.markerData.set("POI", [center]);
+    this.resetPathData();
+    // Display initial center on map
+    // this.markerData.set("POI", [center]);
     this.init(this.googleOpt, rootNode);
 }
-
-/*************************************************
-    Static functions:
- *************************************************/
 
 /*************************************************
     Methods:
@@ -46,8 +43,8 @@ GoogleMapView.prototype.resetMarkerData = function() {
     }
 }
 
-GoogleMapView.prototype.resetAreaData = function() {
-    this.areaData = d3.map();
+GoogleMapView.prototype.resetPathData = function() {
+    this.pathData = d3.map();
     if (this.overlay != null) {
         this.overlay.draw();
     }
@@ -67,15 +64,15 @@ GoogleMapView.prototype.removeMarkerData = function(key) {
     }
 }
 
-GoogleMapView.prototype.addAreaData = function(key, contours) {
-    this.areaData.set(key, contours);
+GoogleMapView.prototype.addPathData = function(key, contours) {
+    this.pathData.set(key, contours);
     if (this.overlay != null) {
         this.overlay.draw();
     }
 }
 
-GoogleMapView.prototype.removeAreaData = function(key) {
-    this.areaData.remove(key);
+GoogleMapView.prototype.removePathData = function(key) {
+    this.pathData.remove(key);
     if (this.overlay != null) {
         this.overlay.draw();
     }
@@ -110,8 +107,8 @@ GoogleMapView.prototype.init = function(googleOpt, rootNode) {
                 width: width + "px",
                 height: height + "px",
             });
-            self.drawAreaData(left, top);
             self.drawMarkerData(left, top);
+            self.drawPathData(left, top);
         };
     };
     self.overlay.setMap(self.map);
@@ -125,12 +122,12 @@ GoogleMapView.prototype.googleMapProjection = function(prj) {
     }
 }
 
-GoogleMapView.prototype.drawAreaData = function(left, top) {
+GoogleMapView.prototype.drawPathData = function(left, top) {
     var self = this;
-    if (self.areaData != null) {
+    if (self.pathData != null) {
         var projection = self.overlay.getProjection()
         var data = [];
-        self.areaData.forEach(function(k, v) {
+        self.pathData.forEach(function(k, v) {
             data = data.concat(v);
         });
 
@@ -139,19 +136,22 @@ GoogleMapView.prototype.drawAreaData = function(left, top) {
         var areas = self.svg.selectAll("path")
             .data(data);
         areas.exit().remove();
-        self.updateSelectedArea(left, top, areas, path);
-        self.updateSelectedArea(left, top, areas.enter().append("path"), path);
+        self.updateSelectedPath(left, top, areas, path);
+        self.updateSelectedPath(left, top, areas.enter().append("path"), path);
     }
 }
-GoogleMapView.prototype.updateSelectedArea = function(left, top, areas, path) {
+GoogleMapView.prototype.updateSelectedPath = function(left, top, areas, path) {
     var self = this;
     areas.attr({
         d: path,
-        class: "areaMarker",
+        class: "pathMarker",
         fill: function(d) {
             return d.properties.color;
         },
         stroke: function(d) {
+            if (d.hasOwnProperty('stroke')) {
+                return d.properties.stroke;
+            }
             return d.properties.color;
         },
     });
@@ -182,7 +182,7 @@ GoogleMapView.prototype.updateSelectedMarker = function(left, top, markers) {
             if (d.hasOwnProperty('radius')) {
                 return d.radius * zoomRatio;
             } else {
-                return 4.5 * zoomRatio;
+                return 2 * zoomRatio;
             }
         },
         cx: function(d) {

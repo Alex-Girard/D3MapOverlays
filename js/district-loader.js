@@ -53,9 +53,9 @@ DistrictLoader.prototype.addDataToMap = function(self, elt) {
     data.forEach(function(d) {
         d.properties.color = elt.color;
     })
-    this.map.addAreaData(elt.tag, data);
+    this.map.addPathData(elt.tag, data);
 }
 
 DistrictLoader.prototype.removeDataFromMap = function(elt) {
-    this.map.removeAreaData(elt.tag);
+    this.map.removePathData(elt.tag);
 }
