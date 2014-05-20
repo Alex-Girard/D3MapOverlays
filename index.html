@@ -3,7 +3,7 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
     <!-- Third party -->
-    <script type="text/javascript" src="https://maps.google.com/maps/api/js?sensor=true"></script>
+    <script src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
     <script src="jquery/jquery-1.11.1.min.js" charset="utf-8"></script>
     <script src="bootstrap/bootstrap-3.1.1.min.js" charset="utf-8"></script>
     <script src="bootstrap/select/bootstrap-select.min.js"
@@ -12,8 +12,11 @@
     charset="utf-8"></script>
     <script src="d3/d3-3.4.6.min.js" charset="utf-8"></script>
     <script src="d3/topojson.v1.min.js"></script>
+    <script src="js/CanvasLayer.js" type="text/javascript"></script>
+
     <!-- JavaScript code -->
     <script src="js/google-map-view.js" type="text/javascript"></script>
+    <script src="js/google-map-canvas-layer.js" type="text/javascript"></script>
     <script src="js/map-controller.js" type="text/javascript"></script>
     <script src="js/station-loader.js" type="text/javascript"></script>
     <script src="js/district-loader.js" type="text/javascript"></script>
@@ -27,6 +30,29 @@
     <link rel="stylesheet" type="text/css" href="css/pygment_trac.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="css/print.css" media="print" />
     <link href="css/map.css" type="text/css" rel="stylesheet">
+
+    <!-- Shader code -->
+     <script id="pointVertexShader" type="x-shader/x-vertex">
+      attribute vec4 worldCoord;
+
+      uniform mat4 mapMatrix;
+
+      void main() {
+        // transform world coordinate by matrix uniform variable
+        gl_Position = mapMatrix * worldCoord;
+
+        // a constant size for points, regardless of zoom level
+        gl_PointSize = 5.;
+      }
+    </script>
+    <script id="pointFragmentShader" type="x-shader/x-fragment">
+      precision mediump float;
+
+      void main() {
+        // set pixels in points to green
+        gl_FragColor = vec4(.1, .8, 0.08, 1.);
+      }
+    </script>
   </head>
   <body>
     <div class="inner">
@@ -69,5 +95,6 @@ $ git checkout gh-pages
         </div>
     </div>
     <script src="js/main.js" type="text/javascript"></script>
+
   </body>
 </html>
