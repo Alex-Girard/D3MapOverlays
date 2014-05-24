@@ -1,3 +1,5 @@
+* districts-sf.json
+
 The original data of neighborhood was found on:
 https://data.sfgov.org/Geography/Neighborhoods/ejmn-jyk6?
 
@@ -8,3 +10,10 @@ ogr2ogr -f GeoJSON data/neighborhood.json data/planning_neighborhoods.shp  -t_sr
 Then:
 
 topojson -p -o data/neighborhood-topo.json data/neighborhood.json
+
+* food_inspection.csv
+
+The original data of restaurant scores was found on:
+https://data.sfgov.org/Public-Health/Restaurant-Scores/stya-26eb
+
+The python script file extract_data.py was used to format the csv file and combine the LIVES score (see standard description at http://www.yelp.com/)healthscores) with the number of violations depending on their risk level
