@@ -7,13 +7,15 @@ GoogleMapCanvasLayer.prototype.gl;
 
 GoogleMapCanvasLayer.prototype.pointProgram;
 GoogleMapCanvasLayer.prototype.pointArrayBuffer;
-GoogleMapCanvasLayer.prototype.POINT_COUNT = 42;
 
+GoogleMapCanvasLayer.prototype.pi_180 = Math.PI / 180.0;
+GoogleMapCanvasLayer.prototype.pi_4 = Math.PI * 4;
 
-GoogleMapCanvasLayer.prototype.MIN_X = 37.65;
-GoogleMapCanvasLayer.prototype.MAX_X = 37.809;
-GoogleMapCanvasLayer.prototype.MIN_Y = -122.52;
-GoogleMapCanvasLayer.prototype.MAX_Y = -122.35;
+GoogleMapCanvasLayer.prototype.POINT_COUNT = 1000;
+GoogleMapCanvasLayer.prototype.MIN_X = 37.658324;
+GoogleMapCanvasLayer.prototype.MAX_X = 37.824495;
+GoogleMapCanvasLayer.prototype.MIN_Y = -122.510896;
+GoogleMapCanvasLayer.prototype.MAX_Y = -122.368257;
 
 GoogleMapCanvasLayer.prototype.pixelsToWebGLMatrix = new Float32Array(16);
 GoogleMapCanvasLayer.prototype.mapMatrix = new Float32Array(16);
@@ -22,16 +24,16 @@ GoogleMapCanvasLayer.prototype.mapMatrix = new Float32Array(16);
     Constructors:
  *************************************************/
 
-function GoogleMapCanvasLayer(googleMapView) {
+function GoogleMapCanvasLayer(googleMapView, vertexFile, fragmentFile) {
     this.map = googleMapView.map;
-    this.init();
+    this.init(vertexFile, fragmentFile);
 }
 
 /*************************************************
     Methods:
  *************************************************/
 
-GoogleMapCanvasLayer.prototype.init = function() {
+GoogleMapCanvasLayer.prototype.init = function(vertexFile, fragmentFile) {
     var canvasLayerOptions = {
         map: this.map,
         resizeHandler: this.resize(this),
@@ -43,48 +45,12 @@ GoogleMapCanvasLayer.prototype.init = function() {
     // initialize WebGL
     this.gl = this.canvasLayer.canvas.getContext('experimental-webgl');
 
-    this.createShaderProgram();
-    this.loadData();
+    this.createShaderProgram(vertexFile, fragmentFile);
 }
 
-
-GoogleMapCanvasLayer.prototype.loadData = function() {
-    var gl = this.gl;
-    // this data could be loaded from anywhere, but in this case we'll
-    // generate some random x,y coords in a world coordinate bounding box
-    var rawData = new Float32Array(2 * this.POINT_COUNT);
-    for (var i = 0; i < rawData.length; i += 2) {
-        var point = LatLongToPixelXY(this.lerp(this.MIN_X, this.MAX_X, Math.random()),
-            this.lerp(this.MIN_Y, this.MAX_Y, Math.random()));
-        rawData[i] = point.x;
-        rawData[i + 1] = point.y;
-    }
-
-    // create webgl buffer, bind it, and load rawData into it
-    this.pointArrayBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.pointArrayBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, rawData, gl.STATIC_DRAW);
-
-    // enable the 'worldCoord' attribute in the shader to receive buffer
-    var attributeLoc = gl.getAttribLocation(this.pointProgram, 'worldCoord');
-    gl.enableVertexAttribArray(attributeLoc);
-
-    // tell webgl how buffer is laid out (pairs of x,y coords)
-    gl.vertexAttribPointer(attributeLoc, 2, gl.FLOAT, false, 0, 0);
-}
-
-// linear interpolate between a and b
-GoogleMapCanvasLayer.prototype.lerp = function(a, b, t) {
-    return a + t * (b - a);
-}
-
-var pi_180 = Math.PI / 180.0;
-var pi_4 = Math.PI * 4;
-
-function LatLongToPixelXY(latitude, longitude) {
-
-    var sinLatitude = Math.sin(latitude * pi_180);
-    var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (pi_4)) * 256;
+GoogleMapCanvasLayer.prototype.LatLongToPixelXY = function(latitude, longitude) {
+    var sinLatitude = Math.sin(latitude * this.pi_180);
+    var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (this.pi_4)) * 256;
     var pixelX = ((longitude + 180) / 360) * 256;
 
     var pixel = {
@@ -96,27 +62,39 @@ function LatLongToPixelXY(latitude, longitude) {
 }
 
 
-GoogleMapCanvasLayer.prototype.createShaderProgram = function() {
+GoogleMapCanvasLayer.prototype.createShaderProgram = function(vertexFile, fragmentFile) {
     var gl = this.gl;
-    // create vertex shader
-    var vertexSrc = document.getElementById('pointVertexShader').text;
-    var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, vertexSrc);
-    gl.compileShader(vertexShader);
+    var self = this;
+    var vertexShader;
+    var fragmentShader;
+    d3.text(vertexFile, "text/plain", function(error, data) {
+        if (error != null) {
+            console.warn(error);
+        } else {
+            vertexShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertexShader, data);
+            gl.compileShader(vertexShader);
+        }
 
-    // create fragment shader
-    var fragmentSrc = document.getElementById('pointFragmentShader').text;
-    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, fragmentSrc);
-    gl.compileShader(fragmentShader);
+        d3.text(fragmentFile, "text/plain", function(error, data) {
+            if (error != null) {
+                console.warn(error);
+            } else {
+                fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fragmentShader, data);
+                gl.compileShader(fragmentShader);
 
-    // link shaders to create our program
-    this.pointProgram = gl.createProgram();
-    gl.attachShader(this.pointProgram, vertexShader);
-    gl.attachShader(this.pointProgram, fragmentShader);
-    gl.linkProgram(this.pointProgram);
+                // link shaders to create our program
+                self.pointProgram = gl.createProgram();
+                gl.attachShader(self.pointProgram, vertexShader);
+                gl.attachShader(self.pointProgram, fragmentShader);
+                gl.linkProgram(self.pointProgram);
+                gl.useProgram(self.pointProgram);
 
-    gl.useProgram(this.pointProgram);
+                self.loadDataPoints();
+            }
+        });
+    });
 }
 
 GoogleMapCanvasLayer.prototype.resize = function(self) {
@@ -187,4 +165,35 @@ GoogleMapCanvasLayer.prototype.update = function(self) {
         // draw!
         gl.drawArrays(gl.POINTS, 0, self.POINT_COUNT);
     }
+}
+
+GoogleMapCanvasLayer.prototype.loadDataPoints = function() {
+    var gl = this.gl;
+    var self = this;
+
+    d3.csv('data/food_inspection.csv', function(error, data) {
+        if (error != null) {
+            console.warn(error);
+        } else {
+            self.POINT_COUNT = data.length;
+            var rawData = new Float32Array(2 * self.POINT_COUNT);
+            for (var i = 0, j = 0; i < rawData.length; i += 2, ++j) {
+                var row = data[j];
+                var point = self.LatLongToPixelXY(parseFloat(row.latitude), parseFloat(row.longitude));
+                rawData[i] = point.x;
+                rawData[i + 1] = point.y;
+            }
+            // create webgl buffer, bind it, and load rawData into it
+            self.pointArrayBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, self.pointArrayBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, rawData, gl.STATIC_DRAW);
+
+            // enable the 'worldCoord' attribute in the shader to receive buffer
+            var attributeLoc = gl.getAttribLocation(self.pointProgram, 'worldCoord');
+            gl.enableVertexAttribArray(attributeLoc);
+
+            // tell webgl how buffer is laid out (pairs of x,y coords)
+            gl.vertexAttribPointer(attributeLoc, 2, gl.FLOAT, false, 0, 0);
+        }
+    });
 }

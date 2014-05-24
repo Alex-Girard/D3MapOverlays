@@ -30,29 +30,6 @@
     <link rel="stylesheet" type="text/css" href="css/pygment_trac.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="css/print.css" media="print" />
     <link href="css/map.css" type="text/css" rel="stylesheet">
-
-    <!-- Shader code -->
-     <script id="pointVertexShader" type="x-shader/x-vertex">
-      attribute vec4 worldCoord;
-
-      uniform mat4 mapMatrix;
-
-      void main() {
-        // transform world coordinate by matrix uniform variable
-        gl_Position = mapMatrix * worldCoord;
-
-        // a constant size for points, regardless of zoom level
-        gl_PointSize = 5.;
-      }
-    </script>
-    <script id="pointFragmentShader" type="x-shader/x-fragment">
-      precision mediump float;
-
-      void main() {
-        // set pixels in points to green
-        gl_FragColor = vec4(.1, .8, 0.08, 1.);
-      }
-    </script>
   </head>
   <body>
     <div class="inner">
