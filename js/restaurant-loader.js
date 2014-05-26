@@ -33,7 +33,6 @@ RestaurantLoader.prototype.ready = function(self, rootNode) {
         }
     });
 }
-
 RestaurantLoader.prototype.showTexture = function(self, data) {
     self.textureLayer.refreshTexture(data);
 }

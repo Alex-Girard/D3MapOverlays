@@ -13,8 +13,6 @@ GoogleMapCanvasLayerTexture.prototype.textureArrayBuffer;
 GoogleMapCanvasLayerTexture.prototype.minPoint;
 GoogleMapCanvasLayerTexture.prototype.maxPoint;
 
-GoogleMapCanvasLayerTexture.prototype.texOptions = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
-
 GoogleMapCanvasLayerTexture.prototype.texHeight = 256;
 GoogleMapCanvasLayerTexture.prototype.texWidth = 256;
 GoogleMapCanvasLayerTexture.prototype.colorTexHeight = 16;
