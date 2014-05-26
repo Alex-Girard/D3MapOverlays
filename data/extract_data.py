@@ -36,6 +36,7 @@ def getBusinessData():
 	data = data.join(getViolationsScore(), how='left', on='business_id')
 	data['violationScore'].fillna(value=0, inplace=True)
 	data['total'] = data['Score'] - data['violationScore']
+#	data = data[data['total'] > 99] 
 	return data
 
 df = getBusinessData()

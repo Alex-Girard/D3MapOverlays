@@ -5,7 +5,7 @@ $(window).load(function() {
         'pos': [37.77926, -122.41934],
         'color': "red"
     });
-    var canvasLayer = new GoogleMapCanvasLayerTexture(globalMap, "shader/foodTexture.vert", "shader/foodTexture.frag");
     var stations = new StationLoader("#bottom-page", globalMap);
     var districts = new DistrictLoader("#bottom-page", globalMap);
+    var restaurants = new RestaurantLoader("#bottom-page", globalMap);
 })

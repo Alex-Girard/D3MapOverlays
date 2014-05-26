@@ -13,6 +13,8 @@ GoogleMapCanvasLayerTexture.prototype.textureArrayBuffer;
 GoogleMapCanvasLayerTexture.prototype.minPoint;
 GoogleMapCanvasLayerTexture.prototype.maxPoint;
 
+GoogleMapCanvasLayerTexture.prototype.texOptions = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
+
 GoogleMapCanvasLayerTexture.prototype.texHeight = 256;
 GoogleMapCanvasLayerTexture.prototype.texWidth = 256;
 GoogleMapCanvasLayerTexture.prototype.colorTexHeight = 16;
@@ -27,16 +29,16 @@ GoogleMapCanvasLayerTexture.prototype.pi_4 = Math.PI * 4;
     Constructors:
  *************************************************/
 
-function GoogleMapCanvasLayerTexture(googleMapView, vertexFile, fragmentFile) {
+function GoogleMapCanvasLayerTexture(googleMapView, vertexFile, fragmentFile, ready) {
     this.map = googleMapView.map;
-    this.init(vertexFile, fragmentFile);
+    this.init(vertexFile, fragmentFile, ready);
 }
 
 /*************************************************
     Methods:
  *************************************************/
 
-GoogleMapCanvasLayerTexture.prototype.init = function(vertexFile, fragmentFile) {
+GoogleMapCanvasLayerTexture.prototype.init = function(vertexFile, fragmentFile, ready) {
     var canvasLayerOptions = {
         map: this.map,
         resizeHandler: this.resize(this),
@@ -49,7 +51,7 @@ GoogleMapCanvasLayerTexture.prototype.init = function(vertexFile, fragmentFile) 
     try {
         this.gl = this.canvasLayer.canvas.getContext('webgl') ||
             this.canvasLayer.canvas.getContext('experimental-webgl');
-        this.createShaderProgram(vertexFile, fragmentFile);
+        this.createShaderProgram(vertexFile, fragmentFile, ready);
     } catch (e) {}
 
     // If we don't have a GL context, give up now
@@ -71,7 +73,7 @@ GoogleMapCanvasLayerTexture.prototype.LatLongToPixelXY = function(latitude, long
 }
 
 
-GoogleMapCanvasLayerTexture.prototype.createShaderProgram = function(vertexFile, fragmentFile) {
+GoogleMapCanvasLayerTexture.prototype.createShaderProgram = function(vertexFile, fragmentFile, ready) {
     var gl = this.gl;
     var self = this;
     var vertexShader;
@@ -108,12 +110,14 @@ GoogleMapCanvasLayerTexture.prototype.createShaderProgram = function(vertexFile,
                 gl.linkProgram(self.pointProgram);
 
                 if (!gl.getProgramParameter(self.pointProgram, gl.LINK_STATUS)) {
-                    alert("Unable to initialize the shader program.");
+                    console.error("Unable to initialize the shader program.");
+                    return;
                 }
 
                 gl.useProgram(self.pointProgram);
 
-                self.loadDataTexture();
+                // self.loadDataTexture();
+                ready();
             }
         });
     });
@@ -193,22 +197,6 @@ GoogleMapCanvasLayerTexture.prototype.update = function(self) {
     }
 }
 
-GoogleMapCanvasLayerTexture.prototype.loadDataTexture = function() {
-    var gl = this.gl;
-    var self = this;
-
-    d3.csv('data/food_inspection.csv', function(error, data) {
-        if (error != null) {
-            console.warn(error);
-        } else {
-            self.rawData = data;
-            self.extractBoundingbox();
-            self.bindColorScale();
-            self.refreshTexture(self);
-        }
-    });
-}
-
 GoogleMapCanvasLayerTexture.prototype.extractBoundingbox = function() {
     var self = this;
     var data = self.rawData;
@@ -275,16 +263,21 @@ GoogleMapCanvasLayerTexture.prototype.extractDataBuffer = function(data) {
 
     data.forEach(function(row) {
         var point = self.LatLongToPixelXY(parseFloat(row.latitude), parseFloat(row.longitude));
-        var x = Math.floor((point.x - self.minPoint.x) * width / (self.maxPoint.x - self.minPoint.x));
-        var y = Math.floor((point.y - self.minPoint.y) * height / (self.maxPoint.y - self.minPoint.y));
-        buffer[x + y * self.texWidth] = (30 + parseFloat(row.total)) * 255.0 / 130.0;
+        var x = Math.round((point.x - self.minPoint.x) * width / (self.maxPoint.x - self.minPoint.x));
+        var y = Math.round((point.y - self.minPoint.y) * height / (self.maxPoint.y - self.minPoint.y));
+        var value = (parseFloat(row.total)) * 255.0 / 100.0;
+        buffer[x + y * self.texWidth] = value;
     });
     return buffer;
 }
 
-GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(self) {
+GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(data) {
+    var self = this;
+    self.rawData = data;
+    self.extractBoundingbox();
+    self.bindColorScale();
+
     var gl = this.gl;
-    var data = self.rawData;
     var texture = gl.createTexture();
     var type = gl.LUMINANCE;
     var width = self.texWidth;
@@ -353,4 +346,6 @@ GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(self) {
 
     var textureSizeLocation = gl.getUniformLocation(self.pointProgram, "uTextureSize");
     gl.uniform2f(textureSizeLocation, width, height);
+
+    self.update(self)();
 }
