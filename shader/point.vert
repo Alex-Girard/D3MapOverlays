@@ -8,5 +8,5 @@ void main() {
 	gl_Position = mapMatrix * worldCoord;
 
     // a constant size for points, regardless of zoom level
-    gl_PointSize = 0.005 * mapMatrix[0].x;
+    gl_PointSize = 0.05 * mapMatrix[0].x;
 }

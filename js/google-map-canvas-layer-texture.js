@@ -257,15 +257,29 @@ GoogleMapCanvasLayerTexture.prototype.extractDataBuffer = function(data) {
     var self = this;
     var width = self.texWidth;
     var height = self.texHeight;
-    var buffer = new Uint8Array(width * height);
+    var buffer = new Uint8Array(width * height * 2);
 
+    // first pass: sum up values, using the alpha as counter
     data.forEach(function(row) {
         var point = self.LatLongToPixelXY(parseFloat(row.latitude), parseFloat(row.longitude));
         var x = Math.round((point.x - self.minPoint.x) * width / (self.maxPoint.x - self.minPoint.x));
         var y = Math.round((point.y - self.minPoint.y) * height / (self.maxPoint.y - self.minPoint.y));
-        var value = (parseFloat(row.total)) * 255.0 / 100.0;
-        buffer[x + y * self.texWidth] = value;
+        var value = Math.round((parseFloat(row.total)) * 255.0 / 100.0);
+        var index = x * 2 + y * self.texWidth * 2;
+        var previousMean = buffer[index];
+        var count = buffer[index + 1] + 1;
+
+        if (count > 1) {
+            buffer[index] = previousMean + ((value - previousMean) / count);
+        } else {
+            buffer[index] = value;
+        }
+        buffer[index + 1] = count;
     });
+    // second pass: reset all alpha to 255 (non transparent)
+    for (var i = 0; i < (self.texWidth * self.texHeight); i += 2) {
+        buffer[i + 1] = 255;
+    }
     return buffer;
 }
 
@@ -277,7 +291,7 @@ GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(data) {
 
     var gl = this.gl;
     var texture = gl.createTexture();
-    var type = gl.LUMINANCE;
+    var type = gl.LUMINANCE_ALPHA;
     var width = self.texWidth;
     var height = self.texHeight;
     var buffer = self.extractDataBuffer(data);

@@ -17,7 +17,7 @@ vec4 cubic(float v) {
     return vec4(x, y, z, w);
 }
 
-vec4 filter(sampler2D texture, vec2 texcoord, vec2 texscale) {
+vec4 sample2DCubic(sampler2D texture, vec2 texcoord, vec2 texscale) {
     float fx = fract(texcoord.x);
     float fy = fract(texcoord.y);
     texcoord.x -= fx;
@@ -43,9 +43,12 @@ vec4 filter(sampler2D texture, vec2 texcoord, vec2 texscale) {
         	mix(sample1, sample0, sx), sy);
 }
 
+vec4 bicubicInterpolation(sampler2D texture, vec2 texcoord) {
+    return sample2DCubic(texture, texcoord * uTextureSize, vec2(1.0, 1.0) / uTextureSize);
+}
+
 void main() {	
-	vec2 onePixel = vec2(1.0, 1.0) / uTextureSize;
-	vec4 val = filter(uSampler, vTextureCoord * uTextureSize, onePixel);
+	vec4 val = bicubicInterpolation(uSampler, vTextureCoord);
 	if (val.x > 0.08) {
 		vec4 col = texture2D(uColorScale, vec2(val.x, 0.5));
 		gl_FragColor = vec4(col.r, col.g, col.b, val.x * 0.7);

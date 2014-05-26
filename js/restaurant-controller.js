@@ -40,7 +40,7 @@ RestaurantController.prototype.initPage = function(rootNode) {
                 bottom: 5,
                 left: 10,
             };
-            var textureDimension = new SliderBrush("td.textureSlider", 6, [0, 9], [200, 42], margin, self.onNewTextureDimension());
+            var textureDimension = new SliderBrush("td.textureSlider", 5, [0, 9], [200, 42], margin, self.onNewTextureDimension());
             var scaleDimension = new SliderBrush("td.scaleSlider", 2, [0, 9], [200, 42], margin, self.onNewScaleDimension());
 
             $("input.textureCheckBox").on("change", self.onCheckBoxChange(self.dataLoader.showTexture));
