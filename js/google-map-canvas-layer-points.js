@@ -95,7 +95,6 @@ GoogleMapCanvasLayerPoints.prototype.createShaderProgram = function(vertexFile, 
 
                 gl.useProgram(self.pointProgram);
 
-                // self.loadDataPoints();
                 ready();
             }
         });
@@ -173,10 +172,41 @@ GoogleMapCanvasLayerPoints.prototype.update = function(self) {
     }
 }
 
-GoogleMapCanvasLayerPoints.prototype.refreshPoints = function(data) {
+GoogleMapCanvasLayerPoints.prototype.bindColorScale = function(height, colorScale) {
+    var gl = this.gl;
+    var width = 4.0;
+
+    var texture = gl.createTexture();
+    var type = gl.RGBA;
+    var colorData = new Uint8Array(width * height * 4);
+    for (var i = 0; i < width; ++i) {
+        for (var j = 0; j < height; ++j) {
+            color = d3.rgb(colorScale(j * 4));
+            colorData[0 + j * 4 + i * 4 * height] = color.r;
+            colorData[1 + j * 4 + i * 4 * height] = color.g;
+            colorData[2 + j * 4 + i * 4 * height] = color.b;
+            colorData[3 + j * 4 + i * 4 * height] = 255;
+        }
+    }
+    // pass texture containing the data
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, type, width, height, 0, type, gl.UNSIGNED_BYTE, colorData);
+
+    // or gl.NEAREST ?
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    gl.uniform1i(gl.getUniformLocation(this.pointProgram, "uColorScale"), 0);
+}
+
+GoogleMapCanvasLayerPoints.prototype.refreshPoints = function(data, numComponents) {
     var self = this;
     var gl = self.gl;
-    self.POINT_COUNT = data.length / 2;
+    self.POINT_COUNT = data.length / numComponents;
 
     // create webgl buffer, bind it, and load rawData into it
     self.pointArrayBuffer = gl.createBuffer();
@@ -187,8 +217,7 @@ GoogleMapCanvasLayerPoints.prototype.refreshPoints = function(data) {
     var attributeLoc = gl.getAttribLocation(self.pointProgram, 'worldCoord');
     gl.enableVertexAttribArray(attributeLoc);
 
-    // tell webgl how buffer is laid out (pairs of x,y coords)
-    gl.vertexAttribPointer(attributeLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(attributeLoc, numComponents, gl.FLOAT, false, 0, 0);
 
     self.update(self)();
 }

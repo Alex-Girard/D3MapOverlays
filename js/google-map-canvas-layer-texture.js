@@ -6,8 +6,6 @@ GoogleMapCanvasLayerTexture.prototype.canvasLayer;
 GoogleMapCanvasLayerTexture.prototype.gl;
 
 GoogleMapCanvasLayerTexture.prototype.pointProgram;
-GoogleMapCanvasLayerTexture.prototype.pointArrayBuffer;
-GoogleMapCanvasLayerTexture.prototype.textureArrayBuffer;
 
 GoogleMapCanvasLayerTexture.prototype.pixelsToWebGLMatrix = new Float32Array(16);
 GoogleMapCanvasLayerTexture.prototype.mapMatrix = new Float32Array(16);
@@ -146,7 +144,7 @@ GoogleMapCanvasLayerTexture.prototype.update = function(self) {
 
         /**
          * We need to create a transformation that takes world coordinate
-         * points in the pointArrayBuffer to the coodinates WebGL expects.
+         * points to the coodinates WebGL expects.
          * 1. Start with second half in pixelsToWebGLMatrix, which takes pixel
          *     coordinates to WebGL coordinates.
          * 2. Scale and translate to take world coordinates to pixel coords
@@ -192,18 +190,17 @@ GoogleMapCanvasLayerTexture.prototype.bindColorScale = function(height, colorSca
         }
     }
     // pass texture containing the data
-    gl.activeTexture(gl.TEXTURE1);
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     // gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, type, width, height, 0, type, gl.UNSIGNED_BYTE, colorData);
 
-    // or gl.NEAREST ?
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    gl.uniform1i(gl.getUniformLocation(this.pointProgram, "uColorScale"), 1);
+    gl.uniform1i(gl.getUniformLocation(this.pointProgram, "uColorScale"), 0);
 }
 
 GoogleMapCanvasLayerTexture.prototype.componentsToGLType = function(numComponents) {
@@ -225,7 +222,7 @@ GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(bbox, dim, numCo
     var height = dim.height;
 
     // pass texture containing the data
-    gl.activeTexture(gl.TEXTURE0);
+    gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, type, width, height, 0, type, gl.UNSIGNED_BYTE, buffer);
@@ -236,9 +233,9 @@ GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(bbox, dim, numCo
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    gl.uniform1i(gl.getUniformLocation(self.pointProgram, "uSampler"), 0);
+    gl.uniform1i(gl.getUniformLocation(self.pointProgram, "uSampler"), 1);
 
-    // pointArrayBuffer contains the world position of the bounding box(2 triangles)
+    // world position of the texture's bounding box(2 triangles)
     var worldCoord = new Float32Array(12);
     if (bbox != null) {
         worldCoord[0] = bbox.minPoint.x;
@@ -258,14 +255,14 @@ GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(bbox, dim, numCo
     } else {
         self.hasData = false;
     }
-    self.pointArrayBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, self.pointArrayBuffer);
+    var pointArrayBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, worldCoord, gl.STATIC_DRAW);
     var attributeLoc = gl.getAttribLocation(self.pointProgram, 'worldCoord');
     gl.enableVertexAttribArray(attributeLoc);
     gl.vertexAttribPointer(attributeLoc, 2, gl.FLOAT, false, 0, 0);
 
-    // textureArraybuffer contains the texture position of the bounding box
+    // texture position of the bounding box
     var texCoord = new Float32Array(12);
     texCoord[0] = 0.0;
     texCoord[1] = 0.0;
@@ -281,8 +278,8 @@ GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(bbox, dim, numCo
     texCoord[10] = 1.0;
     texCoord[11] = 1.0;
 
-    self.textureArrayBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, self.textureArrayBuffer);
+    var textureArrayBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureArrayBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, texCoord, gl.STATIC_DRAW);
     var textureLoc = gl.getAttribLocation(self.pointProgram, 'textureCoord');
     gl.enableVertexAttribArray(textureLoc);

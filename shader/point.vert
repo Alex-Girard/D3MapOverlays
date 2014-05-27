@@ -2,6 +2,7 @@
 attribute vec4 worldCoord;
 
 uniform mat4 mapMatrix;
+varying float value;
 
 void main() {
 	// transform world coordinate by matrix uniform variable
@@ -9,4 +10,5 @@ void main() {
 
     // a constant size for points, regardless of zoom level
     gl_PointSize = 0.05 * mapMatrix[0].x;
+    value = worldCoord.z;
 }

@@ -78,5 +78,8 @@ RestaurantController.prototype.onNewScaleDimension = function() {
         if ($("input.textureCheckBox").is(':checked')) {
             self.dataLoader.showTexture(self.dataLoader, self.rawData);
         }
+        if ($("input.pointsCheckBox").is(':checked')) {
+            self.dataLoader.showPoints(self.dataLoader, self.rawData);
+        }
     }
 }

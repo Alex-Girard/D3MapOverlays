@@ -53,18 +53,21 @@ RestaurantLoader.prototype.LatLongToPixelXY = function(latitude, longitude) {
 }
 
 RestaurantLoader.prototype.showPoints = function(self, data) {
-    var rawData = new Float32Array(2 * data.length);
-    for (var i = 0, j = 0; i < rawData.length; i += 2, ++j) {
-        var row = data[j];
+    self.showColorScale(self.pointLayer);
+    var rawData = new Float32Array(3 * data.length);
+    var i = 0;
+    data.forEach(function(row) {
         var point = self.LatLongToPixelXY(parseFloat(row.latitude), parseFloat(row.longitude));
-        rawData[i] = point.x;
-        rawData[i + 1] = point.y;
-    }
-    self.pointLayer.refreshPoints(rawData);
+        rawData[0 + i * 3] = point.x;
+        rawData[1 + i * 3] = point.y;
+        rawData[2 + i * 3] = parseFloat(row.total) / 100.0;
+        ++i;
+    });
+    self.pointLayer.refreshPoints(rawData, 3);
 }
 
 RestaurantLoader.prototype.showTexture = function(self, data) {
-    self.showColorScale();
+    self.showColorScale(self.textureLayer);
     var dimension = {
         width: self.texWidth,
         height: self.texHeight,
@@ -74,14 +77,14 @@ RestaurantLoader.prototype.showTexture = function(self, data) {
     self.textureLayer.refreshTexture(boundingBox, dimension, 2, buffer);
 }
 
-RestaurantLoader.prototype.showColorScale = function() {
+RestaurantLoader.prototype.showColorScale = function(layer) {
     var self = this;
     var h = self.colorTexHeight;
     var colorScale = d3.scale.linear()
         .domain([0, h * 0.25, h * 0.75, h])
-        .range(["#FF0000", "#992200", "#229900", "#00FF00"])
+        .range(["#FF0000", "#FFFF00", "#229900", "#00FF00"])
         .interpolate(d3.interpolateRgb);
-    self.textureLayer.bindColorScale(h, colorScale);
+    layer.bindColorScale(h, colorScale);
 }
 
 RestaurantLoader.prototype.extractBoundingbox = function(data) {
@@ -113,7 +116,7 @@ RestaurantLoader.prototype.extractDataBuffer = function(bbox, dim, data) {
     var height = dim.height;
     var buffer = new Uint8Array(width * height * 2);
     if (bbox != null) {
-        // first pass: sum up values, using the alpha as counter
+        // first pass: incrementally compute average values, using the alpha as counter
         data.forEach(function(row) {
             var point = self.LatLongToPixelXY(parseFloat(row.latitude), parseFloat(row.longitude));
             var x = Math.round((point.x - bbox.minPoint.x) * width / (bbox.maxPoint.x - bbox.minPoint.x));
