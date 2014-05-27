@@ -63,8 +63,8 @@ RestaurantController.prototype.onCheckBoxChange = function(show) {
 RestaurantController.prototype.onNewTextureDimension = function() {
     var self = this;
     return function(value) {
-        self.textureLayer.texHeight = self.texOptions[value];
-        self.textureLayer.texWidth = self.texOptions[value];
+        self.dataLoader.texHeight = self.texOptions[value];
+        self.dataLoader.texWidth = self.texOptions[value];
         if ($("input.textureCheckBox").is(':checked')) {
             self.dataLoader.showTexture(self.dataLoader, self.rawData);
         }
@@ -74,7 +74,7 @@ RestaurantController.prototype.onNewTextureDimension = function() {
 RestaurantController.prototype.onNewScaleDimension = function() {
     var self = this;
     return function(value) {
-        self.textureLayer.colorTexHeight = self.texOptions[value];
+        self.dataLoader.colorTexHeight = self.texOptions[value];
         if ($("input.textureCheckBox").is(':checked')) {
             self.dataLoader.showTexture(self.dataLoader, self.rawData);
         }

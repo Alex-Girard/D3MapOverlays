@@ -52,20 +52,6 @@ GoogleMapCanvasLayerPoints.prototype.init = function(vertexFile, fragmentFile, r
     }
 }
 
-GoogleMapCanvasLayerPoints.prototype.LatLongToPixelXY = function(latitude, longitude) {
-    var sinLatitude = Math.sin(latitude * this.pi_180);
-    var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (this.pi_4)) * 256;
-    var pixelX = ((longitude + 180) / 360) * 256;
-
-    var pixel = {
-        x: pixelX,
-        y: pixelY
-    };
-
-    return pixel;
-}
-
-
 GoogleMapCanvasLayerPoints.prototype.createShaderProgram = function(vertexFile, fragmentFile, ready) {
     var gl = this.gl;
     var self = this;
@@ -190,18 +176,12 @@ GoogleMapCanvasLayerPoints.prototype.update = function(self) {
 GoogleMapCanvasLayerPoints.prototype.refreshPoints = function(data) {
     var self = this;
     var gl = self.gl;
-    self.POINT_COUNT = data.length;
-    var rawData = new Float32Array(2 * self.POINT_COUNT);
-    for (var i = 0, j = 0; i < rawData.length; i += 2, ++j) {
-        var row = data[j];
-        var point = self.LatLongToPixelXY(parseFloat(row.latitude), parseFloat(row.longitude));
-        rawData[i] = point.x;
-        rawData[i + 1] = point.y;
-    }
+    self.POINT_COUNT = data.length / 2;
+
     // create webgl buffer, bind it, and load rawData into it
     self.pointArrayBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, self.pointArrayBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, rawData, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
 
     // enable the 'worldCoord' attribute in the shader to receive buffer
     var attributeLoc = gl.getAttribLocation(self.pointProgram, 'worldCoord');

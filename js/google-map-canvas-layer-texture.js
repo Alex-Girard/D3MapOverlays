@@ -4,24 +4,15 @@
 GoogleMapCanvasLayerTexture.prototype.map;
 GoogleMapCanvasLayerTexture.prototype.canvasLayer;
 GoogleMapCanvasLayerTexture.prototype.gl;
-GoogleMapCanvasLayerTexture.prototype.rawData;
 
 GoogleMapCanvasLayerTexture.prototype.pointProgram;
 GoogleMapCanvasLayerTexture.prototype.pointArrayBuffer;
 GoogleMapCanvasLayerTexture.prototype.textureArrayBuffer;
 
-GoogleMapCanvasLayerTexture.prototype.minPoint;
-GoogleMapCanvasLayerTexture.prototype.maxPoint;
-
-GoogleMapCanvasLayerTexture.prototype.texHeight = 256;
-GoogleMapCanvasLayerTexture.prototype.texWidth = 256;
-GoogleMapCanvasLayerTexture.prototype.colorTexHeight = 16;
-
 GoogleMapCanvasLayerTexture.prototype.pixelsToWebGLMatrix = new Float32Array(16);
 GoogleMapCanvasLayerTexture.prototype.mapMatrix = new Float32Array(16);
 
-GoogleMapCanvasLayerTexture.prototype.pi_180 = Math.PI / 180.0;
-GoogleMapCanvasLayerTexture.prototype.pi_4 = Math.PI * 4;
+GoogleMapCanvasLayerTexture.prototype.hasData;
 
 /*************************************************
     Constructors:
@@ -58,18 +49,6 @@ GoogleMapCanvasLayerTexture.prototype.init = function(vertexFile, fragmentFile, 
         this.gl = null;
     }
 }
-
-GoogleMapCanvasLayerTexture.prototype.LatLongToPixelXY = function(latitude, longitude) {
-    var sinLatitude = Math.sin(latitude * this.pi_180);
-    var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (this.pi_4)) * 256;
-    var pixelX = ((longitude + 180) / 360) * 256;
-    var pixel = {
-        x: pixelX,
-        y: pixelY
-    };
-    return pixel;
-}
-
 
 GoogleMapCanvasLayerTexture.prototype.createShaderProgram = function(vertexFile, fragmentFile, ready) {
     var gl = this.gl;
@@ -114,8 +93,9 @@ GoogleMapCanvasLayerTexture.prototype.createShaderProgram = function(vertexFile,
 
                 gl.useProgram(self.pointProgram);
 
-                // self.loadDataTexture();
-                ready();
+                if (ready != null) {
+                    ready();
+                }
             }
         });
     });
@@ -188,43 +168,16 @@ GoogleMapCanvasLayerTexture.prototype.update = function(self) {
         var matrixLoc = gl.getUniformLocation(self.pointProgram, 'mapMatrix');
         gl.uniformMatrix4fv(matrixLoc, false, self.mapMatrix);
 
-        // draw!
-        if (self.rawData != null) {
+        if (self.hasData) {
+            // draw!
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 6);
         }
     }
 }
 
-GoogleMapCanvasLayerTexture.prototype.extractBoundingbox = function() {
-    var self = this;
-    var data = self.rawData;
-    self.minPoint = self.LatLongToPixelXY(
-        d3.min(data, function(d) {
-            return parseFloat(d.latitude);
-        }),
-        d3.min(data, function(d) {
-            return parseFloat(d.longitude);
-        })
-    );
-    self.maxPoint = self.LatLongToPixelXY(
-        d3.max(data, function(d) {
-            return parseFloat(d.latitude);
-        }),
-        d3.max(data, function(d) {
-            return parseFloat(d.longitude);
-        })
-    );
-}
-
-GoogleMapCanvasLayerTexture.prototype.bindColorScale = function() {
+GoogleMapCanvasLayerTexture.prototype.bindColorScale = function(height, colorScale) {
     var gl = this.gl;
     var width = 4.0;
-    var height = this.colorTexHeight;
-
-    var colorScale = d3.scale.linear()
-        .domain([0, height * 0.25, height * 0.75, height])
-        .range(["#FF0000", "#992200", "#229900", "#00FF00"])
-        .interpolate(d3.interpolateRgb);
 
     var texture = gl.createTexture();
     var type = gl.RGBA;
@@ -253,48 +206,23 @@ GoogleMapCanvasLayerTexture.prototype.bindColorScale = function() {
     gl.uniform1i(gl.getUniformLocation(this.pointProgram, "uColorScale"), 1);
 }
 
-GoogleMapCanvasLayerTexture.prototype.extractDataBuffer = function(data) {
-    var self = this;
-    var width = self.texWidth;
-    var height = self.texHeight;
-    var buffer = new Uint8Array(width * height * 2);
-
-    // first pass: sum up values, using the alpha as counter
-    data.forEach(function(row) {
-        var point = self.LatLongToPixelXY(parseFloat(row.latitude), parseFloat(row.longitude));
-        var x = Math.round((point.x - self.minPoint.x) * width / (self.maxPoint.x - self.minPoint.x));
-        var y = Math.round((point.y - self.minPoint.y) * height / (self.maxPoint.y - self.minPoint.y));
-        var value = Math.round((parseFloat(row.total)) * 255.0 / 100.0);
-        var index = x * 2 + y * self.texWidth * 2;
-        var previousMean = buffer[index];
-        var count = buffer[index + 1] + 1;
-
-        if (count > 1) {
-            buffer[index] = previousMean + ((value - previousMean) / count);
-        } else {
-            buffer[index] = value;
-        }
-        buffer[index + 1] = count;
-    });
-    // second pass: reset all alpha to 255 (non transparent)
-    for (var i = 0; i < (self.texWidth * self.texHeight); i += 2) {
-        buffer[i + 1] = 255;
-    }
-    return buffer;
+GoogleMapCanvasLayerTexture.prototype.componentsToGLType = function(numComponents) {
+    var mapping = {
+        1: this.gl.LUMINANCE,
+        2: this.gl.LUMINANCE_ALPHA,
+        3: this.gl.RGB,
+        4: this.gl.RGBA,
+    };
+    return mapping[numComponents];
 }
 
-GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(data) {
+GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(bbox, dim, numComponents, buffer) {
     var self = this;
-    self.rawData = data;
-    self.extractBoundingbox();
-    self.bindColorScale();
-
-    var gl = this.gl;
+    var gl = self.gl;
     var texture = gl.createTexture();
-    var type = gl.LUMINANCE_ALPHA;
-    var width = self.texWidth;
-    var height = self.texHeight;
-    var buffer = self.extractDataBuffer(data);
+    var type = self.componentsToGLType(numComponents);
+    var width = dim.width;
+    var height = dim.height;
 
     // pass texture containing the data
     gl.activeTexture(gl.TEXTURE0);
@@ -312,20 +240,24 @@ GoogleMapCanvasLayerTexture.prototype.refreshTexture = function(data) {
 
     // pointArrayBuffer contains the world position of the bounding box(2 triangles)
     var worldCoord = new Float32Array(12);
-    worldCoord[0] = self.minPoint.x;
-    worldCoord[1] = self.minPoint.y;
-    worldCoord[2] = self.maxPoint.x;
-    worldCoord[3] = self.minPoint.y;
-    worldCoord[4] = self.minPoint.x;
-    worldCoord[5] = self.maxPoint.y;
+    if (bbox != null) {
+        worldCoord[0] = bbox.minPoint.x;
+        worldCoord[1] = bbox.minPoint.y;
+        worldCoord[2] = bbox.maxPoint.x;
+        worldCoord[3] = bbox.minPoint.y;
+        worldCoord[4] = bbox.minPoint.x;
+        worldCoord[5] = bbox.maxPoint.y;
 
-    worldCoord[6] = self.minPoint.x;
-    worldCoord[7] = self.maxPoint.y;
-    worldCoord[8] = self.maxPoint.x;
-    worldCoord[9] = self.minPoint.y;
-    worldCoord[10] = self.maxPoint.x;
-    worldCoord[11] = self.maxPoint.y;
-
+        worldCoord[6] = bbox.minPoint.x;
+        worldCoord[7] = bbox.maxPoint.y;
+        worldCoord[8] = bbox.maxPoint.x;
+        worldCoord[9] = bbox.minPoint.y;
+        worldCoord[10] = bbox.maxPoint.x;
+        worldCoord[11] = bbox.maxPoint.y;
+        self.hasData = true;
+    } else {
+        self.hasData = false;
+    }
     self.pointArrayBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, self.pointArrayBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, worldCoord, gl.STATIC_DRAW);
