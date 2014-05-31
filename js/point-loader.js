@@ -11,9 +11,12 @@ PointLoader.prototype.displayedData;
 PointLoader.prototype.texHeight = 128;
 PointLoader.prototype.texWidth = 128;
 PointLoader.prototype.colorTexHeight = 16;
+PointLoader.prototype.pointSize = 0.5;
 
 PointLoader.prototype.pi_180 = Math.PI / 180.0;
 PointLoader.prototype.pi_4 = Math.PI * 4;
+
+PointLoader.prototype.dataDir = 'data/tmp/FunctDay1_csv/';
 
 /*************************************************
     Constructors:
@@ -33,7 +36,7 @@ function PointLoader(rootNode, map) {
  *************************************************/
 
 PointLoader.prototype.ready = function(self, rootNode) {
-    d3.csv('data/tmp/FunctDay1_csv/index.csv', function(error, data) {
+    d3.csv(self.dataDir + 'index.csv', function(error, data) {
         if (error != null) {
             console.warn(error);
         } else {
@@ -42,7 +45,7 @@ PointLoader.prototype.ready = function(self, rootNode) {
                 self.fileController = new MapController("Files", self);
                 self.fileController.extractData = self.extractData;
                 self.fileController.extractTitle = self.extractTitle;
-                self.fileController.extractTag = self.extractTag;
+                self.fileController.extractTag = self.extractTitle;
                 self.fileController.init(rootNode);
                 self.controller = new PointController(self, rootNode, []);
             }
@@ -72,7 +75,7 @@ PointLoader.prototype.showPoints = function(self, data) {
         rawData[2 + i * 3] = parseFloat(row.pointValue) / 100.0;
         ++i;
     });
-    self.pointLayer.refreshPoints(rawData, 3);
+    self.pointLayer.refreshPoints(rawData, 3, self.pointSize);
 }
 
 PointLoader.prototype.showTexture = function(self, data) {
@@ -162,10 +165,6 @@ PointLoader.prototype.extractTitle = function(data) {
     return data.file;
 }
 
-PointLoader.prototype.extractTag = function(data) {
-    return 'data/tmp/FunctDay1_csv/' + data.file;
-}
-
 PointLoader.prototype.getSelectorData = function() {
     return this.selectorData;
 }
@@ -179,8 +178,26 @@ PointLoader.prototype.refreshMap = function() {
     self.controller.setRawData(rawData);
 }
 
+PointLoader.prototype.reloadDataToMap = function(self, dataDir) {
+    self.dataDir = dataDir;
+    var count = 0;
+    self.displayedData.forEach(function(k, v) {
+        d3.csv(self.dataDir + k, function(error, data) {
+            if (error != null) {
+                console.warn(error);
+            } else {
+                self.displayedData.set(k, data);
+                count = count + 1;
+                if (count == self.displayedData.size()) {
+                    self.refreshMap();
+                }
+            }
+        });
+    });
+}
+
 PointLoader.prototype.addDataToMap = function(self, elt) {
-    d3.csv(elt.tag, function(error, data) {
+    d3.csv(self.dataDir + elt.tag, function(error, data) {
         if (error != null) {
             console.warn(error);
         } else {

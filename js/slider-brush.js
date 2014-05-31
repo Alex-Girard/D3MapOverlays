@@ -6,6 +6,8 @@ SliderBrush.prototype.brush;
 SliderBrush.prototype.x;
 SliderBrush.prototype.handle;
 SliderBrush.prototype.oldValue = 0;
+SliderBrush.prototype.domainValues;
+
 /*************************************************
     Constructors:
  *************************************************/
@@ -21,6 +23,7 @@ SliderBrush.prototype.init = function(rootNode, defaultValue, domainValues, dime
     var self = this;
     var width = dimensions[0];
     var height = dimensions[1];
+    self.domainValues = domainValues;
     self.x = d3.scale.linear()
         .domain(domainValues)
         .range([0, width])
@@ -78,6 +81,28 @@ SliderBrush.prototype.init = function(rootNode, defaultValue, domainValues, dime
         .call(self.brush.event);
 }
 
+SliderBrush.prototype.incValue = function(self) {
+    if (self.oldValue < self.domainValues[1]) {
+        var value = self.oldValue + 1;
+        self.setValue(self, value);
+    }
+}
+
+SliderBrush.prototype.decValue = function(self) {
+    if (self.oldValue > 0) {
+        var value = self.oldValue - 1;
+        self.setValue(self, value);
+    }
+}
+
+SliderBrush.prototype.setValue = function(self, value) {
+    if (self.oldValue != value) {
+        self.handle.attr("cx", self.x(value));
+        self.onNewValue(value);
+        self.oldValue = value;
+    }
+}
+
 SliderBrush.prototype.brushed = function(self) {
     return function() {
         var value = self.brush.extent()[0];
@@ -87,10 +112,6 @@ SliderBrush.prototype.brushed = function(self) {
             value = Math.round(value);
             self.brush.extent([value, value]);
         }
-        if (self.oldValue != value) {
-            self.handle.attr("cx", self.x(value));
-            self.onNewValue(value);
-            self.oldValue = value;
-        }
+        self.setValue(self, value);
     }
 }

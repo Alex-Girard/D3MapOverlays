@@ -6,7 +6,6 @@ GoogleMapCanvasLayerPoints.prototype.canvasLayer;
 GoogleMapCanvasLayerPoints.prototype.gl;
 
 GoogleMapCanvasLayerPoints.prototype.pointProgram;
-GoogleMapCanvasLayerPoints.prototype.pointArrayBuffer;
 
 GoogleMapCanvasLayerPoints.prototype.pi_180 = Math.PI / 180.0;
 GoogleMapCanvasLayerPoints.prototype.pi_4 = Math.PI * 4;
@@ -203,21 +202,23 @@ GoogleMapCanvasLayerPoints.prototype.bindColorScale = function(height, colorScal
     gl.uniform1i(gl.getUniformLocation(this.pointProgram, "uColorScale"), 0);
 }
 
-GoogleMapCanvasLayerPoints.prototype.refreshPoints = function(data, numComponents) {
+GoogleMapCanvasLayerPoints.prototype.refreshPoints = function(data, numComponents, pointSize) {
     var self = this;
     var gl = self.gl;
     self.POINT_COUNT = data.length / numComponents;
 
     // create webgl buffer, bind it, and load rawData into it
-    self.pointArrayBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, self.pointArrayBuffer);
+    var pointArrayBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
 
     // enable the 'worldCoord' attribute in the shader to receive buffer
     var attributeLoc = gl.getAttribLocation(self.pointProgram, 'worldCoord');
     gl.enableVertexAttribArray(attributeLoc);
-
     gl.vertexAttribPointer(attributeLoc, numComponents, gl.FLOAT, false, 0, 0);
+
+    var textureSizeLocation = gl.getUniformLocation(self.pointProgram, "pointSize");
+    gl.uniform2f(textureSizeLocation, pointSize, pointSize);
 
     self.update(self)();
 }
