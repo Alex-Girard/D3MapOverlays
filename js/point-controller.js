@@ -9,7 +9,7 @@ PointController.prototype.daySlider;
 
 PointController.prototype.texOptions = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 PointController.prototype.pointSizeOptions = [0.1, 0.2, 0.5, 0.7, 1.0, 1.5, 2.0, 3.0, 5.0, 7.0];
-PointController.prototype.dataDirOptions = ['data/tmp/FunctDay1_csv/', 'data/tmp/FunctDay3_csv/', 'data/tmp/FunctDay7_csv/', 'data/tmp/FunctDay14_csv/'];
+PointController.prototype.dataDirOptions = ['data/FunctDay1_csv/', 'data/FunctDay3_csv/', 'data/FunctDay7_csv/', 'data/FunctDay14_csv/'];
 
 /*************************************************
     Constructors:

@@ -16,7 +16,7 @@ PointLoader.prototype.pointSize = 0.5;
 PointLoader.prototype.pi_180 = Math.PI / 180.0;
 PointLoader.prototype.pi_4 = Math.PI * 4;
 
-PointLoader.prototype.dataDir = 'data/tmp/FunctDay1_csv/';
+PointLoader.prototype.dataDir = 'data/FunctDay1_csv/';
 
 /*************************************************
     Constructors:
