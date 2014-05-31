@@ -6,5 +6,7 @@ $(window).load(function() {
         'color': "red"
     });
     //var restaurants = new RestaurantLoader("#restaurant", globalMap);
-    var loader = new JsonPathLoader("data/districts-sf.json", "name")("#bottom-page", globalMap);
+
+    var points = new PointLoader("#bottom-page", globalMap);
+    //var loader = new JsonPathLoader("data/districts-sf.json", "name")("#bottom-page", globalMap);
 })
